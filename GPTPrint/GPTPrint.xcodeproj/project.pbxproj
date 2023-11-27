@@ -25,6 +25,7 @@
 		04D1E5E92B14CD73004F1A86 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 04D1E5E82B14CD73004F1A86 /* FirebaseStorage */; };
 		04D1E5EB2B14CD73004F1A86 /* FirebaseStorageCombine-Community in Frameworks */ = {isa = PBXBuildFile; productRef = 04D1E5EA2B14CD73004F1A86 /* FirebaseStorageCombine-Community */; };
 		04D1E5ED2B14CEE4004F1A86 /* Fonts in Resources */ = {isa = PBXBuildFile; fileRef = 04D1E5EC2B14CEE4004F1A86 /* Fonts */; };
+		04D1E5EF2B14D674004F1A86 /* ImagePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D1E5EE2B14D674004F1A86 /* ImagePicker.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -57,6 +58,7 @@
 		04D1E5CA2B14C327004F1A86 /* GPTPrintUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GPTPrintUITestsLaunchTests.swift; sourceTree = "<group>"; };
 		04D1E5D72B14CCC1004F1A86 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GoogleService-Info.plist"; sourceTree = SOURCE_ROOT; };
 		04D1E5EC2B14CEE4004F1A86 /* Fonts */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = Fonts; sourceTree = SOURCE_ROOT; };
+		04D1E5EE2B14D674004F1A86 /* ImagePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagePicker.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -120,6 +122,7 @@
 				04D1E5D72B14CCC1004F1A86 /* GoogleService-Info.plist */,
 				04D1E5AD2B14C326004F1A86 /* GPTPrintApp.swift */,
 				04D1E5AF2B14C326004F1A86 /* ContentView.swift */,
+				04D1E5EE2B14D674004F1A86 /* ImagePicker.swift */,
 				04D1E5B12B14C327004F1A86 /* Assets.xcassets */,
 				04D1E5B32B14C327004F1A86 /* Preview Content */,
 			);
@@ -297,6 +300,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				04D1E5EF2B14D674004F1A86 /* ImagePicker.swift in Sources */,
 				04D1E5B02B14C326004F1A86 /* ContentView.swift in Sources */,
 				04D1E5AE2B14C326004F1A86 /* GPTPrintApp.swift in Sources */,
 			);
@@ -385,7 +389,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.1;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -439,7 +443,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.1;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
@@ -460,6 +464,9 @@
 				DEVELOPMENT_TEAM = DJY49YYL9Z;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSAppleMusicUsageDescription = "";
+				INFOPLIST_KEY_NSCameraUsageDescription = "";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -489,6 +496,9 @@
 				DEVELOPMENT_TEAM = DJY49YYL9Z;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSAppleMusicUsageDescription = "";
+				INFOPLIST_KEY_NSCameraUsageDescription = "";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

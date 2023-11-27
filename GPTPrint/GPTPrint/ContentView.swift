@@ -8,7 +8,6 @@
 import SwiftUI
 import Foundation
 import Firebase
-import FirebaseCore
 
 struct ContentView: View {
     @State private var TOKEN: String = "" // DO NOT PUSH ONTO GITHUB
@@ -17,117 +16,20 @@ struct ContentView: View {
     @State private var recordText = ""
     @State private var records: [Record] = []
     @State var messages: [String] = ["Welcome to FoodPrint Personal Diet Assistant!"]
-    
-    private func retrieveRecords() {
-        FirebaseDataManager.retrieveRecords { records in
-            self.records = records
-            let timestamp = Array(records.map{$0.timestamp})
-            let height = Array(records.map{$0.height})
-            let weight = Array(records.map{$0.weight})
-            let foodCategory = Array(records.map{$0.foodCategory})
-            let calories = Array(records.map{$0.calories})
-            recordText = ""
-            if timestamp.count < 50 {
-                for i in (0 ..< timestamp.count) {
-                    recordText = recordText + "\(i), \(timestamp[i]), \(height[i]), \(weight[i]), \(foodCategory[i]), \(calories[i])\\n"
-                }
-            } else {
-                for i in (0 ..< 20) {
-                    recordText = recordText + "\(i), \(timestamp[i]), \(height[i]), \(weight[i]), \(foodCategory[i]), \(calories[i])\\n"
-                }
-                recordText = recordText + "...[PARTIAL DATA HIDDEN]...\\n"
-                for i in (timestamp.count - 30 ..< timestamp.count) {
-                    recordText = recordText + "\(i), \(timestamp[i]), \(height[i]), \(weight[i]), \(foodCategory[i]), \(calories[i])\\n"
-                }
-            }
-        }
-    }
-    
-    func getBotResponse(messages: [String]) -> String {
-        retrieveRecords()
-        var GPTResponse: String = "That's cool!"
-        
-        guard let url = URL(string: "https://api.openai.com/v1/chat/completions"),
-            let payload = """
-  {
-    "model": "gpt-4-1106-preview",
-    "temperature": 0.7,
-    "max_tokens": 1000,
-    "messages": [
-      {
-        "role": "system",
-        "content": "You are a helpful Personal Diet Assistant providing diet advice to help the user. Your answers need to be concise with no more than 50 words. The user is practicing 16:8 intermittent fasting, which involves an 8-hour window for food consumption and fasting for 16 hours. The 8-hour window starts upon the record of the first meal of the day. Please make use of the following user record to come up with personalized advice. The record is in comma-separated format and in chronological order.\\n record_id, timestamp, user_height, user_weight, food_eaten, kilogram_calories_of_food_eaten\\n\(self.recordText)\\nThe current timestamp is 20/11/2023 12:14."
-      },
-      \(messageThread(messages: messages))
-    ]
-  }
-""".data(using: .utf8) else
-        {
-            return "Error"
-        }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.addValue("Bearer \(TOKEN)", forHTTPHeaderField: "Authorization")
-        request.httpBody = payload
-        let semaphore = DispatchSemaphore(value: 0)
-        URLSession.shared.dataTask(with: request) { (data, response, error) in
-            defer { semaphore.signal() }
-            guard error == nil else { print(error!.localizedDescription); return }
-            guard let data = data else { print("Empty data"); return }
-            if let str = String(data: data, encoding: .utf8) {
-                print(str)
-                GPTResponse = String(String(String(str.components(separatedBy: "\n")[10]).components(separatedBy: "\"content\": ")[1]).dropLast().dropFirst())
-                print(GPTResponse)
-            }
-        }.resume()
-        semaphore.wait()
-        return GPTResponse.replacingOccurrences(of: "\\n", with: "\n")
-    }
-    
-    func messageThread(messages: [String]) -> String {
-        var resStr: String = ""
-        var resArray: [String] = []
-        for i in (0 ..< messages.count) {
-            if messages[i].contains("[USER]"){
-                resArray.append("""
-      {
-        "role": "user",
-        "content": "\(messages[i].replacingOccurrences(of: "[USER]", with: ""))"
-      }
-""")
-            } else {
-                resArray.append("""
-      {
-        "role": "assistant",
-        "content": "\(messages[i].replacingOccurrences(of: "\n", with: "\\n"))"
-      }
-""")
-            }
-        }
-        resStr = resArray.joined(separator: ",\n")
-        return resStr
-    }
-    
-    func sendMessage(message: String) {
-        withAnimation {
-            messages.append("[USER]" + message)
-            self.messageText = ""
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-            withAnimation {
-                messages.append(getBotResponse(messages: messages))
-            }
-        }
-    }
+    @State private var showSheet: Bool = false
+    @State private var showNotification: Bool = false
+    @State private var showImagePicker: Bool = false
+    @State private var image: UIImage?
+    @State private var sourceType: UIImagePickerController.SourceType = .camera
+    @State private var notificationText: String = "Photo selected!"
     
     var body: some View {
         let _ = retrieveRecords()
         VStack{
             HStack{
                 Text("ChatBot")
-                    .font(.custom("Kalam-Bold", size: 40))
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
                     .bold()
                 Image(systemName: "bubble.left.fill")
                     .foregroundColor(Color.blue)
@@ -169,27 +71,234 @@ struct ContentView: View {
                     .background(Color.gray.opacity(0.1))
                     .cornerRadius(20)
                     .onSubmit {
+                        if messageText != "" {
+                            sendMessage(message: messageText)
+                        }
+                    }
+                
+                // send message button
+                Button{
+                    if messageText != "" {
                         sendMessage(message: messageText)
                     }
-                Button{
-                    sendMessage(message: messageText)
                 } label: {
                     Image(systemName: "paperplane.fill")
                 }
                 .font(.system(size: 26))
                 .padding(.horizontal, 2)
-                Button{
-                    sendMessage(message: messageText)
-                } label: {
+                
+                // select image button
+                Button(action: {
+                    self.showSheet = true
+                }){
                     Image(systemName: "camera.fill")
+                        .font(.system(size: 26))
+                        .padding(.horizontal, 2)
                 }
-                .font(.system(size: 26))
-                .padding(.horizontal, 2)
+                .actionSheet(isPresented:$showSheet) {
+                    ActionSheet(title: Text("Select Photo"),
+                        message: Text("Take a photo to record your food"), buttons: [
+                            .default(Text("Photo Library")) {
+                                self.showImagePicker = true
+                                self.sourceType = .photoLibrary
+                            },
+                            .default(Text("Camera")) {
+                                self.showImagePicker = true
+                                self.sourceType = .camera
+                            },
+                            .cancel()
+                        ])
+                }
             }
             .padding()
         }
-    }
+        .sheet(isPresented: $showImagePicker, onDismiss: {
+            var GPTResponse: String = "Ramen, 300 kcal."
+            var GPTResponseParsed: (String, Int?) = ("Unrecognized food", 0)
+            var notificationString: String = "Ramen, 300 kcal."
+            var base64String = ""
+            if let imageData = image?.jpegData(compressionQuality: 0.1) {
+                base64String = imageData.base64EncodedString()
+            }
+            if base64String == "" {
+                notificationText = "No photo selected."
+                showNotification = true
+            } else {
+                guard let url = URL(string: "https://api.openai.com/v1/chat/completions"),
+                      let payload = """
+                          {
+                            "model": "gpt-4-vision-preview",
+                            "max_tokens": 30,
+                            "messages": [
+                                {
+                                    "role": "system",
+                                    "content": [{"type": "text", "text": "You are a helpful and professional Diat Analyst."}]
+                                },
+                                {
+                                    "role": "user",
+                                    "content": [
+                                        {
+                                            "type": "text",
+                                            "text": "Read the photo of a meal. Please responde with minimal number of words (at most 3 words) describing what food it is, and a number (not a range) indicating the estimated energy this meal includes in kilogram calories. Format the response as: [FOOD] @ [ENERGY] kcal."
+                                        },
+                                        {
+                                            "type": "image_url",
+                                            "image_url": {
+                                                "url": "data:image/jpeg;base64,{\(base64String)}",
+                                                "detail": "low"
+                                            }
+                                        }
+                                    ]
+                                }
+                            ]
+                          }
+                        """.data(using: .utf8) else{return}
+                        
+                        var request = URLRequest(url: url)
+                        request.httpMethod = "POST"
+                        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+                        request.addValue("Bearer \(TOKEN)", forHTTPHeaderField: "Authorization")
+                        request.httpBody = payload
+                        let semaphore = DispatchSemaphore(value: 0)
+                        URLSession.shared.dataTask(with: request) { (data, response, error) in
+                            defer { semaphore.signal() }
+                            guard error == nil else { print(error!.localizedDescription); return }
+                            guard let data = data else { print("Empty data"); return }
+                            if let str = String(data: data, encoding: .utf8) {
+                                print(str)
+                                GPTResponse = String(String(str.components(separatedBy: "\"}, \"finish_details\": ")[0]).components(separatedBy: "content\": \"")[1])
+                                GPTResponseParsed = GPTResponseParser(GPTResponse: GPTResponse)
+                                notificationString = GPTResponseParsed.0 + ", " +  String(GPTResponseParsed.1 ?? 0) + " kcal."
+        //                        GPTResponseParsed = GPTResponseParser(GPTResponse: GPTResponse).0 + ", " +  String(GPTResponseParser(GPTResponse: GPTResponse).1 ?? 0) + " kcal."
+                                print(GPTResponse)
+                                print(GPTResponseParsed)
+                                }
+                            }.resume()
+                            semaphore.wait()
+                            notificationText = notificationString
+                            showNotification = true
+                        }
+                    }) {
+                        let _ = print(self.$showImagePicker)
+                        ImagePicker(image: self.$image, isShown: self.$showImagePicker, sourceType: self.sourceType)
+                        }
+                    }
+        private func retrieveRecords() {
+            FirebaseDataManager.retrieveRecords { records in
+                self.records = records
+                let timestamp = Array(records.map{$0.timestamp})
+                let height = Array(records.map{$0.height})
+                let weight = Array(records.map{$0.weight})
+                let foodCategory = Array(records.map{$0.foodCategory})
+                let calories = Array(records.map{$0.calories})
+                recordText = ""
+                if timestamp.count < 50 {
+                    for i in (0 ..< timestamp.count) {
+                        recordText = recordText + "\(i), \(timestamp[i]), \(height[i]), \(weight[i]), \(foodCategory[i]), \(calories[i])\\n"
+                    }
+                } else {
+                    for i in (0 ..< 20) {
+                        recordText = recordText + "\(i), \(timestamp[i]), \(height[i]), \(weight[i]), \(foodCategory[i]), \(calories[i])\\n"
+                    }
+                    recordText = recordText + "...[PARTIAL DATA HIDDEN]...\\n"
+                    for i in (timestamp.count - 30 ..< timestamp.count) {
+                        recordText = recordText + "\(i), \(timestamp[i]), \(height[i]), \(weight[i]), \(foodCategory[i]), \(calories[i])\\n"
+                    }
+                }
+            }
+        }
+    
+        func getBotResponse(messages: [String]) -> String {
+            retrieveRecords()
+            var GPTResponse: String = "That's cool!"
+            
+            guard let url = URL(string: "https://api.openai.com/v1/chat/completions"),
+                let payload = """
+                  {
+                    "model": "gpt-4-1106-preview",
+                    "temperature": 0.7,
+                    "max_tokens": 1000,
+                    "messages": [
+                      {
+                        "role": "system",
+                        "content": "You are a helpful Personal Diet Assistant providing diet advice to help the user. Your answers need to be concise with no more than 50 words. The user is practicing 16:8 intermittent fasting, which involves an 8-hour window for food consumption and fasting for 16 hours. The 8-hour window starts upon the record of the first meal of the day. Please make use of the following user record to come up with personalized advice. The record is in comma-separated format and in chronological order.\\n record_id, timestamp, user_height, user_weight, food_eaten, kilogram_calories_of_food_eaten\\n\(self.recordText)\\nThe current timestamp is 20/11/2023 12:14."
+                      },
+                      \(messageThread(messages: messages))
+                    ]
+                  }
+                """.data(using: .utf8) else{return "Error"}
+        
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.addValue("Bearer \(TOKEN)", forHTTPHeaderField: "Authorization")
+            request.httpBody = payload
+            let semaphore = DispatchSemaphore(value: 0)
+            URLSession.shared.dataTask(with: request) { (data, response, error) in
+                defer { semaphore.signal() }
+                guard error == nil else { print(error!.localizedDescription); return }
+                guard let data = data else { print("Empty data"); return }
+                if let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                    GPTResponse = String(String(String(str.components(separatedBy: "\n")[10]).components(separatedBy: "\"content\": ")[1]).dropLast().dropFirst())
+                    print(GPTResponse)
+                }
+            }.resume()
+            semaphore.wait()
+            return GPTResponse.replacingOccurrences(of: "\\n", with: "\n")
+        }
+    
+        func messageThread(messages: [String]) -> String {
+            var resStr: String = ""
+            var resArray: [String] = []
+            for i in (0 ..< messages.count) {
+                if messages[i].contains("[USER]"){
+                    resArray.append("""
+                      {
+                        "role": "user",
+                        "content": "\(messages[i].replacingOccurrences(of: "[USER]", with: ""))"
+                      }
+                """)
+                            } else {
+                                resArray.append("""
+                      {
+                        "role": "assistant",
+                        "content": "\(messages[i].replacingOccurrences(of: "\n", with: "\\n"))"
+                      }
+                """)
+                            }
+                        }
+            resStr = resArray.joined(separator: ",\n")
+            return resStr
+        }
+    
+        func sendMessage(message: String) {
+            withAnimation {
+                messages.append("[USER]" + message)
+                self.messageText = ""
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                withAnimation {
+                    messages.append(getBotResponse(messages: messages))
+                }
+            }
+        }
+        
+        func GPTResponseParser(GPTResponse: String) -> (String, Int?) {
+                if GPTResponse.contains("@") {
+                    do {
+                        let food = try GPTResponse.components(separatedBy: "@")[0].trimmingCharacters(in: .whitespacesAndNewlines)
+                        let cal = try Int(GPTResponse.components(separatedBy: "@")[1].replacingOccurrences(of: "kcal.", with: "").trimmingCharacters(in: .whitespacesAndNewlines))
+                        return (food, cal)
+                    } catch {
+                        return ("Unrecognized food", 0)
+                    }
+                } else {
+                    return ("Unrecognized food", 0)
+                }
+            }
 }
+
 class FirebaseDataManager {
     static func retrieveRecords(completion: @escaping ([Record]) -> Void) {
         let databaseRef = Database.database().reference()
@@ -243,6 +352,7 @@ class FirebaseDataManager {
         }
     }
 }
+
 class Record {
     var userId: Int
     var recordId: Int
@@ -262,7 +372,6 @@ class Record {
         self.calories = calories
     }
 }
-
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         ContentView()
