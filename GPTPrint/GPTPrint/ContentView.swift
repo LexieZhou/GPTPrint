@@ -15,7 +15,6 @@ struct ContentView: View {
     @State private var messageText = ""
     @State private var recordText = ""
     @State private var records: [Record] = []
-//    @State var messages: [String] = ["Welcome to FoodPrint Personal Diet Assistant!"]
     @StateObject var allMessages = Messages()
     @State private var showSheet: Bool = false
     @State private var showNotification: Bool = false
@@ -139,92 +138,21 @@ struct ContentView: View {
             
             }
         }
-//    func sendMessage(message: String, photo: UIImage?) {
-//            withAnimation {
-//                messages.append("[USER]" + message)
-//                self.messageText = ""
-//            }
-//            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-//                withAnimation {
-//                    messages.append(getBotResponse(messages: messages))
-//                }
-//            }
-//        }
     
     func dismissImagePicker() {
-        var GPTResponse: String = "Ramen, 300 kcal."
-        var GPTResponseParsed: (String, Int?) = ("Unrecognized food", 0)
-        var notificationString: String = "Ramen, 300 kcal."
         var base64String = ""
         if let imageData = image?.jpegData(compressionQuality: 0.1) {
             base64String = imageData.base64EncodedString()
         }
-        if base64String == "" {
-            notificationText = "No photo selected."
-            // showNotification = true
-            // do nothing
-        } else {
+        if base64String != "" {
             // image is not nil
             if let imageData = image?.jpegData(compressionQuality: 0.1) {
-                allMessages.writeMessage(id: UUID(), message: "[USER]", photo: imageData)
+                allMessages.writeMessage(id: UUID(), message: "[USER][IMG]"+base64String, photo: imageData)
             }
-            guard let url = URL(string: "https://api.openai.com/v1/chat/completions"),
-                  let payload = """
-                      {
-                        "model": "gpt-4-vision-preview",
-                        "max_tokens": 30,
-                        "messages": [
-                            {
-                                "role": "system",
-                                "content": [{"type": "text", "text": "You are a helpful and professional Diat Analyst."}]
-                            },
-                            {
-                                "role": "user",
-                                "content": [
-                                    {
-                                        "type": "text",
-                                        "text": "Read the photo of a meal. Please responde with minimal number of words (at most 3 words) describing what food it is, and a number (not a range) indicating the estimated energy this meal includes in kilogram calories. Format the response as: [FOOD] @ [ENERGY] kcal."
-                                    },
-                                    {
-                                        "type": "image_url",
-                                        "image_url": {
-                                            "url": "data:image/jpeg;base64,{\(base64String)}",
-                                            "detail": "low"
-                                        }
-                                    }
-                                ]
-                            }
-                        ]
-                      }
-                    """.data(using: .utf8) else{return}
-
-                    var request = URLRequest(url: url)
-                    request.httpMethod = "POST"
-                    request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-                    request.addValue("Bearer \(TOKEN)", forHTTPHeaderField: "Authorization")
-                    request.httpBody = payload
-                    let semaphore = DispatchSemaphore(value: 0)
-                    URLSession.shared.dataTask(with: request) { (data, response, error) in
-                        defer { semaphore.signal() }
-                        guard error == nil else { print(error!.localizedDescription); return }
-                        guard let data = data else { print("Empty data"); return }
-                        if let str = String(data: data, encoding: .utf8) {
-                            print(str)
-                            GPTResponse = String(String(str.components(separatedBy: "\"}, \"finish_details\": ")[0]).components(separatedBy: "content\": \"")[1])
-                            GPTResponseParsed = GPTResponseParser(GPTResponse: GPTResponse)
-                            notificationString = GPTResponseParsed.0 + ", " +  String(GPTResponseParsed.1 ?? 0) + " kcal."
-    //                        GPTResponseParsed = GPTResponseParser(GPTResponse: GPTResponse).0 + ", " +  String(GPTResponseParser(GPTResponse: GPTResponse).1 ?? 0) + " kcal."
-                            print(GPTResponse)
-                            print(GPTResponseParsed)
-                            }
-                        }.resume()
-                        semaphore.wait()
-                    // GPT respond
-                    allMessages.writeMessage(id: UUID(), message: notificationString, photo: nil)
-//                        notificationText = notificationString
-//                        showNotification = true
+            allMessages.writeMessage(id: UUID(), message: getBotResponse(messages: allMessages.messages.map { $0.message }), photo: nil)
                     }
     }
+    
     private func retrieveRecords() {
         FirebaseDataManager.retrieveRecords { records in
             self.records = records
@@ -252,13 +180,16 @@ struct ContentView: View {
 
     func getBotResponse(messages: [String]) -> String {
         retrieveRecords()
+        let _ = print("last message:")
+        let _ = print(messages[messages.count - 1].replacingOccurrences(of: "[USER]", with: ""))
+        let _ = print("all message:")
+        let _ = print(messages)
         var GPTResponse: String = "That's cool!"
         
         guard let url = URL(string: "https://api.openai.com/v1/chat/completions"),
             let payload = """
               {
-                "model": "gpt-4-1106-preview",
-                "temperature": 0.7,
+                "model": "gpt-4-vision-preview",
                 "max_tokens": 1000,
                 "messages": [
                   {
@@ -282,7 +213,8 @@ struct ContentView: View {
             guard let data = data else { print("Empty data"); return }
             if let str = String(data: data, encoding: .utf8) {
                 print(str)
-                GPTResponse = String(String(String(str.components(separatedBy: "\n")[10]).components(separatedBy: "\"content\": ")[1]).dropLast().dropFirst())
+//                GPTResponse = String(String(String(str.components(separatedBy: "\n")[10]).components(separatedBy: "\"content\": ")[1]).dropLast().dropFirst())
+                GPTResponse = String(String(str.components(separatedBy: "\"}, \"finish_details\": ")[0]).components(separatedBy: "content\": \"")[1])
                 print(GPTResponse)
             }
         }.resume()
@@ -295,12 +227,33 @@ struct ContentView: View {
         var resArray: [String] = []
         for i in (0 ..< messages.count) {
             if messages[i].contains("[USER]"){
-                resArray.append("""
+                if messages[i].contains("[USER][IMG]"){
+                    resArray.append("""
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": "Read the this photo."
+                            },
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": "data:image/jpeg;base64,{\(messages[i].replacingOccurrences(of: "[USER][IMG]", with: ""))",
+                                    "detail": "low"
+                                }
+                            }
+                        ]
+                    }
+                    """)
+                } else {
+                    resArray.append("""
                   {
                     "role": "user",
                     "content": "\(messages[i].replacingOccurrences(of: "[USER]", with: ""))"
                   }
             """)
+                }
                         } else {
                             resArray.append("""
                   {
