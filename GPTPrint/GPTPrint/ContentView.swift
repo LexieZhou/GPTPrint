@@ -11,6 +11,7 @@ import Firebase
 
 struct ContentView: View {
     @State private var TOKEN: String = "" // DO NOT PUSH ONTO GITHUB
+        
     @State private var messageText = ""
     @State private var recordText = ""
     @State private var records: [Record] = []
@@ -84,6 +85,7 @@ struct ContentView: View {
                     .cornerRadius(20)
                     .onSubmit {
                         if messageText != "" {
+//                            sendMessage(message: messageText, photo: nil)
                             allMessages.messages.append(Message(id: UUID(), message: "[USER]" + messageText))
                             allMessages.messages.append(Message(id: UUID(), message: getBotResponse(messages: allMessages.messages.map { $0.message })))
                             messageText = ""
@@ -93,6 +95,7 @@ struct ContentView: View {
                 // send message button
                 Button{
                     if messageText != "" {
+//                        sendMessage(message: messageText, photo: nil)
                         allMessages.messages.append(Message(id: UUID(), message: "[USER]" + messageText))
                         // get GPT response
                         allMessages.messages.append(Message(id: UUID(), message: getBotResponse(messages: allMessages.messages.map { $0.message })))
@@ -177,16 +180,12 @@ struct ContentView: View {
 
     func getBotResponse(messages: [String]) -> String {
         retrieveRecords()
-        let _ = print("last message:")
-        let _ = print(messages[messages.count - 1].replacingOccurrences(of: "[USER]", with: ""))
-        let _ = print("all message:")
-        let _ = print(messages)
-        var GPTResponse: String = "That's cool!"
-        
+        var botResponse: String = ""
         guard let url = URL(string: "https://api.openai.com/v1/chat/completions"),
             let payload = """
               {
                 "model": "gpt-4-vision-preview",
+                "temperature": 0.7,
                 "max_tokens": 1000,
                 "messages": [
                   {
@@ -210,13 +209,13 @@ struct ContentView: View {
             guard let data = data else { print("Empty data"); return }
             if let str = String(data: data, encoding: .utf8) {
                 print(str)
-//                GPTResponse = String(String(String(str.components(separatedBy: "\n")[10]).components(separatedBy: "\"content\": ")[1]).dropLast().dropFirst())
-                GPTResponse = String(String(str.components(separatedBy: "\"}, \"finish_details\": ")[0]).components(separatedBy: "content\": \"")[1])
-                print(GPTResponse)
+//                botResponse = String(String(String(str.components(separatedBy: "\n")[10]).components(separatedBy: "\"content\": ")[1]).dropLast().dropFirst())
+                botResponse = String(String(str.components(separatedBy: "\"}, \"finish_details\": ")[0]).components(separatedBy: "content\": \"")[1])
+                print(botResponse)
             }
         }.resume()
         semaphore.wait()
-        return GPTResponse.replacingOccurrences(of: "\\n", with: "\n")
+        return botResponse.replacingOccurrences(of: "\\n", with: "\n")
     }
     
     func messageThread(messages: [String]) -> String {
@@ -229,10 +228,6 @@ struct ContentView: View {
                     {
                         "role": "user",
                         "content": [
-                            {
-                                "type": "text",
-                                "text": "Read the this photo."
-                            },
                             {
                                 "type": "image_url",
                                 "image_url": {
