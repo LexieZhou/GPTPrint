@@ -11,7 +11,6 @@ import Firebase
 
 struct ContentView: View {
     @State private var TOKEN: String = "" // DO NOT PUSH ONTO GITHUB
-        
     @State private var messageText = ""
     @State private var recordText = ""
     @State private var records: [Record] = []
@@ -85,7 +84,6 @@ struct ContentView: View {
                     .cornerRadius(20)
                     .onSubmit {
                         if messageText != "" {
-//                            sendMessage(message: messageText, photo: nil)
                             allMessages.messages.append(Message(id: UUID(), message: "[USER]" + messageText))
                             allMessages.messages.append(Message(id: UUID(), message: getBotResponse(messages: allMessages.messages.map { $0.message })))
                             messageText = ""
@@ -95,7 +93,6 @@ struct ContentView: View {
                 // send message button
                 Button{
                     if messageText != "" {
-//                        sendMessage(message: messageText, photo: nil)
                         allMessages.messages.append(Message(id: UUID(), message: "[USER]" + messageText))
                         // get GPT response
                         allMessages.messages.append(Message(id: UUID(), message: getBotResponse(messages: allMessages.messages.map { $0.message })))
